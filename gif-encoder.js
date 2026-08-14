@@ -16,53 +16,13 @@
     }
   }
 
-  function lzw(data) {
-    const clear = 256, end = 257, output = [];
-    let current = 0, bitCount = 0, nextCode = 258, dictionary = new Map();
-    const write = (code) => {
-      current |= code << bitCount;
-      bitCount += 9;
-      while (bitCount >= 8) {
-        output.push(current & 255);
-        current >>>= 8;
-        bitCount -= 8;
-      }
-    };
-
-    write(clear);
-    if (!data.length) {
-      write(end);
-      if (bitCount) output.push(current & 255);
-      return output;
-    }
-
-    let prefix = data[0];
-    for (let i = 1; i < data.length; i++) {
-      const suffix = data[i], key = `${prefix},${suffix}`;
-      if (dictionary.has(key)) {
-        prefix = dictionary.get(key);
-        continue;
-      }
-      write(prefix);
-      if (nextCode < 510) dictionary.set(key, nextCode++);
-      else { write(clear); dictionary = new Map(); nextCode = 258; }
-      prefix = suffix;
-    }
-    write(prefix);
-    write(end);
-    if (bitCount) output.push(current & 255);
-    return output;
-  }
-
   class GifEncoder {
-    constructor(width, height, options = {}) {
+    constructor(width, height, delay, options = {}) {
       this.width = width;
       this.height = height;
-      this.fps = options.fps || 15;
+      this.delay = delay;
       this.transparent = options.transparent !== false;
-      this.frameIndex = 0;
       this.out = new ByteWriter();
-
       const out = this.out;
       out.text("GIF89a");
       out.short(width);
@@ -87,15 +47,11 @@
       }
     }
 
-    addFrame(imageData) {
-      if (!imageData || !imageData.data || imageData.data.length !== this.width * this.height * 4) {
+    addFrame(rgba, delay = this.delay) {
+      if (!rgba || rgba.length !== this.width * this.height * 4) {
         throw new Error(`Invalid GIF frame buffer: expected ${this.width * this.height * 4} RGBA bytes.`);
       }
-      if (imageData.width !== this.width || imageData.height !== this.height) {
-        throw new Error(`Invalid GIF frame dimensions: expected ${this.width} × ${this.height}.`);
-      }
-
-      const rgba = imageData.data, indexed = new Uint8Array(this.width * this.height);
+      const indexed = new Uint8Array(this.width * this.height);
       for (let pixel = 0, offset = 0; pixel < indexed.length; pixel++, offset += 4) {
         if (this.transparent && rgba[offset + 3] < 64) {
           indexed[pixel] = 0;
@@ -104,17 +60,12 @@
         const paletteIndex = ((rgba[offset] >> 5) << 5) | ((rgba[offset + 1] >> 5) << 2) | (rgba[offset + 2] >> 6);
         indexed[pixel] = paletteIndex || 1;
       }
-
-      const delay = Math.max(1,
-        Math.round((this.frameIndex + 1) * 100 / this.fps) - Math.round(this.frameIndex * 100 / this.fps));
-      this.frameIndex++;
-
       const out = this.out;
       out.byte(0x21);
       out.byte(0xf9);
       out.byte(4);
       out.byte(this.transparent ? 9 : 8);
-      out.short(delay);
+      out.short(Math.max(1, delay));
       out.byte(0);
       out.byte(0);
       out.byte(0x2c);
@@ -133,7 +84,42 @@
     }
   }
 
+  function lzw(data) {
+    const clear = 256, end = 257, output = [];
+    let current = 0, bits = 0, next = 258, dictionary = new Map();
+    const write = (code) => {
+      current |= code << bits;
+      bits += 9;
+      while (bits >= 8) {
+        output.push(current & 255);
+        current >>>= 8;
+        bits -= 8;
+      }
+    };
+    write(clear);
+    if (!data.length) {
+      write(end);
+      if (bits) output.push(current & 255);
+      return output;
+    }
+    let prefix = data[0];
+    for (let i = 1; i < data.length; i++) {
+      const suffix = data[i], key = `${prefix},${suffix}`;
+      if (dictionary.has(key)) {
+        prefix = dictionary.get(key);
+        continue;
+      }
+      write(prefix);
+      if (next < 510) dictionary.set(key, next++);
+      else { write(clear); dictionary = new Map(); next = 258; }
+      prefix = suffix;
+    }
+    write(prefix);
+    write(end);
+    if (bits) output.push(current & 255);
+    return output;
+  }
+
   root.ByteWriter = ByteWriter;
   root.GifEncoder = GifEncoder;
-  root.gifLzw = lzw;
 })(globalThis);

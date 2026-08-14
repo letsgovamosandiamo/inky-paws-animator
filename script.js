@@ -455,35 +455,25 @@ function renderExportFrame(context, source, deformationCanvas, deformationContex
   drawDecorativeLayer(context, "front", time, config.decorative, metrics, frameSource); context.restore();
 }
 function nextPaint() { return new Promise((resolve) => requestAnimationFrame(resolve)); }
-function verifyGifFrame(frame, width, height) {
-  if (frame.width !== width || frame.height !== height || frame.data.length !== width * height * 4) throw new Error("Captured GIF frame dimensions do not match the export canvas.");
-  const diagnostic = document.createElement("canvas"); diagnostic.width = width; diagnostic.height = height;
-  const diagnosticContext = diagnostic.getContext("2d", { willReadFrequently: true }); diagnosticContext.putImageData(frame, 0, 0);
-  const copy = diagnosticContext.getImageData(0, 0, width, height).data;
-  for (let i = 0; i < frame.data.length; i += 4) {
-    if (copy[i] !== frame.data[i] || copy[i + 1] !== frame.data[i + 1] || copy[i + 2] !== frame.data[i + 2] || copy[i + 3] !== frame.data[i + 3]) throw new Error("GIF diagnostic canvas did not preserve the captured RGBA frame.");
+async function createGifExport(canvas, context, source, deformationCanvas, deformationContext, config, layout, fps, duration, looping, background) {
+  const frameCount = Math.max(1, Math.round(duration * fps));
+  const baseDelay = Math.max(1, Math.round(100 / fps));
+  const encoder = new GifEncoder(layout.width, layout.height, baseDelay, { loop: looping, transparent: background === "transparent" });
+  for (let frame = 0; frame < frameCount; frame++) {
+    renderExportFrame(context, source, deformationCanvas, deformationContext, frame / fps, config, layout, background);
+    const rgba = context.getImageData(0, 0, layout.width, layout.height).data;
+    const delay = Math.max(1, Math.round((frame + 1) * 100 / fps) - Math.round(frame * 100 / fps));
+    encoder.addFrame(rgba, delay);
+    exportStatus.textContent = `Rendering ${Math.round((frame + 1) / frameCount * 100)}%`;
+    if (frame % 3 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
   }
-}
-async function createGif(canvas, context, source, talkCanvas, talkContext, config, layout, fps, duration, looping, background) {
-  const frames = Math.max(1, Math.ceil(duration * fps));
-  const encoder = new GifEncoder(layout.width, layout.height, { fps, loop: looping, transparent: background === "transparent" });
-  for (let frame = 0; frame < frames; frame++) {
-    renderExportFrame(context, source, talkCanvas, talkContext, frame / fps, config, layout, background);
-    const captured = context.getImageData(0, 0, layout.width, layout.height);
-    if (frame === 0) verifyGifFrame(captured, layout.width, layout.height);
-    encoder.addFrame(captured);
-    exportStatus.textContent = `Rendering ${Math.round((frame + 1) / frames * 100)}%`;
-    if (frame % 2 === 1) await nextPaint();
-  }
-  return encoder.finish();
-}
-async function inspectGifBlob(blob, frameCountRequested) {
+  const blob = encoder.finish();
   const header = await blob.slice(0, 6).text();
   if (blob.type !== "image/gif" || (header !== "GIF87a" && header !== "GIF89a")) {
     console.error("GIF encoding failed. Invalid header:", header);
     throw new Error("GIF encoding failed");
   }
-  return header;
+  return { blob, header, frameCount };
 }
 function downloadGif(event) {
   if (!downloadAnimation.download.toLowerCase().endsWith(".gif")) return;
@@ -544,12 +534,11 @@ async function exportAnimation() {
   exportBlob = null; exportHeader = ""; exportFrameCount = 0;
   exportStatus.textContent = layout.capped ? `Original capped at ${format === "gif" ? "1024" : "1920"} px for memory safety. Rendering 0%` : "Rendering 0%";
   try {
-    const blob = format === "gif"
-      ? await createGif(canvas, context, source, talkCanvas, talkContext, config, layout, fps, duration, looping, background)
-      : await createWebM(canvas, context, source, talkCanvas, talkContext, config, layout, fps, duration, looping, background);
-    const frameCount = Math.max(1, Math.ceil(duration * fps));
-    const header = format === "gif" ? await inspectGifBlob(blob, frameCount) : "";
-    if (format === "gif") { exportBlob = blob; exportHeader = header; exportFrameCount = frameCount; }
+    const gif = format === "gif"
+      ? await createGifExport(canvas, context, source, talkCanvas, talkContext, config, layout, fps, duration, looping, background)
+      : null;
+    const blob = gif ? gif.blob : await createWebM(canvas, context, source, talkCanvas, talkContext, config, layout, fps, duration, looping, background);
+    if (gif) { exportBlob = gif.blob; exportHeader = gif.header; exportFrameCount = gif.frameCount; }
     exportUrl = URL.createObjectURL(blob); downloadAnimation.href = exportUrl;
     downloadAnimation.download = `inky-paws-${config.baseMotion}.${format}`; downloadAnimation.textContent = `Download ${format.toUpperCase()}`; downloadAnimation.hidden = false;
     const alphaNote = format === "webm" && background === "transparent" ? " VP9 transparency depends on browser and video-player support." : "";
