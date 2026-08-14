@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Animate your character locally in the browser with Inky Paws Animator.">
+    <title>Inky Paws Animator</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="Inky Paws Animator home">
+        <span class="brand-mark" aria-hidden="true">
+          <span class="paw-pad"></span>
+          <span class="toe toe-one"></span>
+          <span class="toe toe-two"></span>
+          <span class="toe toe-three"></span>
+        </span>
+        <span>
+          <span class="brand-name">Inky Paws Animator</span>
+          <span class="brand-tagline">Bring your characters to life.</span>
+        </span>
+      </a>
+      <span class="privacy-note"><span aria-hidden="true">✦</span> Your artwork stays on this device</span>
+    </header>
+
+    <main class="workspace">
+      <section class="panel upload-panel" aria-labelledby="upload-title">
+        <div class="step-heading">
+          <span class="step-number">1</span>
+          <div>
+            <p class="eyebrow">Get started</p>
+            <h1 id="upload-title">Upload Character</h1>
+          </div>
+        </div>
+
+        <label class="drop-zone" id="drop-zone" for="image-input">
+          <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp">
+          <span class="upload-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+          </span>
+          <strong>Choose your character</strong>
+          <span>or drag and drop it here</span>
+          <small>PNG, JPG or WebP</small>
+        </label>
+        <p class="upload-status" id="upload-status" aria-live="polite">No image selected</p>
+      </section>
+
+      <section class="panel editor-panel" aria-labelledby="editor-title">
+        <div class="step-heading">
+          <span class="step-number">2</span>
+          <div><p class="eyebrow">Clean the cutout</p><h2 id="editor-title">Remove / Edit Background</h2></div>
+        </div>
+        <div class="editor-canvas-wrap">
+          <canvas id="editor-canvas" aria-label="Background removal editor"></canvas>
+          <p class="editor-placeholder" id="editor-placeholder">Upload a character to start editing</p>
+        </div>
+        <button class="primary-button" id="remove-background" type="button" disabled>Remove Background</button>
+        <div class="control-row range-row editor-control">
+          <div class="control-label"><label for="tolerance-control">Tolerance</label><output id="tolerance-value" for="tolerance-control">24</output></div>
+          <input id="tolerance-control" type="range" min="1" max="100" value="24" step="1" disabled>
+          <div class="range-labels"><span>Precise</span><span>Aggressive</span></div>
+        </div>
+        <div class="editor-tools" role="toolbar" aria-label="Background editing tools">
+          <button class="tool-button" id="erase-tool" type="button" aria-pressed="false" disabled>Erase</button>
+          <button class="tool-button" id="undo-button" type="button" disabled>Undo</button>
+          <button class="tool-button" id="restore-button" type="button" disabled>Restore Original</button>
+        </div>
+        <div class="control-row range-row editor-control">
+          <div class="control-label"><label for="brush-control">Brush size</label><output id="brush-value" for="brush-control">32 px</output></div>
+          <input id="brush-control" type="range" min="4" max="120" value="32" step="2" disabled>
+        </div>
+        <p class="editor-help" id="editor-help" aria-live="polite">Everything is processed locally in your browser.</p>
+      </section>
+
+      <section class="panel preview-panel" aria-labelledby="preview-title">
+        <div class="step-heading preview-heading">
+          <span class="step-number">3</span>
+          <div>
+            <p class="eyebrow">Your canvas</p>
+            <h2 id="preview-title">Preview &amp; Animate</h2>
+          </div>
+          <span class="status-pill" id="animation-status"><span></span> Ready</span>
+        </div>
+
+        <div class="stage" id="stage">
+          <div class="stage-grid" aria-hidden="true"></div>
+          <div class="empty-state" id="empty-state">
+            <span class="sparkle" aria-hidden="true">✦</span>
+            <div class="empty-orbit" aria-hidden="true"><span></span></div>
+            <strong>Your character will appear here</strong>
+            <p>Upload an image to begin animating</p>
+          </div>
+          <canvas id="effects-behind" class="effects-canvas" aria-hidden="true" hidden></canvas>
+          <canvas id="character-image" aria-label="Animated character preview" hidden></canvas>
+          <canvas id="effects-front" class="effects-canvas" aria-hidden="true" hidden></canvas>
+          <div class="mouth-selection" id="mouth-selection" hidden aria-hidden="true"></div>
+          <div class="mouth-selection eye-selection" id="eye-selection" hidden aria-hidden="true"></div>
+          <div class="stage-floor" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <section class="panel controls-panel" aria-labelledby="settings-title">
+        <div class="step-heading">
+          <span class="step-number">4</span>
+          <div>
+            <p class="eyebrow">Fine tune</p>
+            <h2 id="settings-title">Character Effects</h2>
+          </div>
+        </div>
+
+        <fieldset class="effect-picker base-motion-picker">
+          <legend>Base Motion</legend>
+          <div class="base-motion-options">
+            <label><input type="radio" name="base-motion" value="none"><span>None</span></label>
+            <label><input type="radio" name="base-motion" value="walk" checked><span>Walk</span></label>
+            <label><input type="radio" name="base-motion" value="jump"><span>Jump</span></label>
+            <label><input type="radio" name="base-motion" value="float"><span>Float</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="optional-effects">
+          <legend>Optional Effects</legend>
+          <div class="effect-toggles">
+            <label><span>Blink</span><input type="checkbox" data-effect-toggle="blink"></label>
+            <label><span>Talk</span><input type="checkbox" data-effect-toggle="talk"></label>
+            <label><span>Breathe</span><input type="checkbox" data-effect-toggle="breathe"></label>
+            <label><span>Shake</span><input type="checkbox" data-effect-toggle="shake"></label>
+            <label><span>Pulse</span><input type="checkbox" data-effect-toggle="pulse"></label>
+            <label><span>Wiggle</span><input type="checkbox" data-effect-toggle="wiggle"></label>
+          </div>
+        </fieldset>
+        <div class="mode-settings" data-base-settings="walk">
+          <fieldset class="walk-style-picker">
+            <legend>Walk Style</legend>
+            <div class="walk-style-options">
+              <label><input type="radio" name="walk-style" value="forward-back" checked><span>Forward / Back</span></label>
+              <label><input type="radio" name="walk-style" value="side"><span>Side Walk</span></label>
+            </div>
+          </fieldset>
+          <button class="primary-button walk-preview" id="play-walk" type="button" disabled>Pause Walk</button>
+          <div data-walk-settings="forward-back">
+            <div class="setting-range"><div class="control-label"><label for="walk-speed">Walk Speed</label><output id="walk-speed-value">1.0×</output></div><input id="walk-speed" type="range" min="0.4" max="2.2" value="1" step="0.1"></div>
+            <div class="setting-range"><div class="control-label"><label for="travel-distance">Travel Distance</label><output id="travel-distance-value">60%</output></div><input id="travel-distance" type="range" min="10" max="90" value="60" step="5"></div>
+            <div class="setting-range"><div class="control-label"><label for="bob-amount">Bob Amount</label><output id="bob-amount-value">8 px</output></div><input id="bob-amount" type="range" min="0" max="24" value="8" step="1"></div>
+            <div class="setting-range"><div class="control-label"><label for="step-tilt">Step Tilt</label><output id="step-tilt-value">2°</output></div><input id="step-tilt" type="range" min="0" max="6" value="2" step="0.5"></div>
+            <label class="loop-control"><span>Loop walk</span><input id="walk-loop" type="checkbox" checked></label>
+          </div>
+          <div data-walk-settings="side" hidden>
+            <div class="walk-direction" role="group" aria-label="Side walk direction">
+              <button class="tool-button active" data-walk-direction="-1" type="button" aria-pressed="true">← Walk Left</button>
+              <button class="tool-button" data-walk-direction="1" type="button" aria-pressed="false">Walk Right →</button>
+            </div>
+            <div class="setting-range"><div class="control-label"><label for="side-step-speed">Step Speed</label><output id="side-step-speed-value">1.2×</output></div><input id="side-step-speed" type="range" min="0.5" max="2.5" value="1.2" step="0.1"></div>
+            <div class="setting-range"><div class="control-label"><label for="side-step-height">Step Height</label><output id="side-step-height-value">8 px</output></div><input id="side-step-height" type="range" min="2" max="20" value="8" step="1"></div>
+            <div class="setting-range"><div class="control-label"><label for="side-step-tilt">Step Tilt</label><output id="side-step-tilt-value">3°</output></div><input id="side-step-tilt" type="range" min="0" max="8" value="3" step="0.5"></div>
+            <div class="setting-range"><div class="control-label"><label for="side-step-width">Step Width</label><output id="side-step-width-value">10 px</output></div><input id="side-step-width" type="range" min="2" max="24" value="10" step="1"></div>
+            <div class="setting-range"><div class="control-label"><label for="side-squash-stretch">Squash &amp; Stretch</label><output id="side-squash-stretch-value">10%</output></div><input id="side-squash-stretch" type="range" min="0" max="25" value="10" step="1"></div>
+            <label class="loop-control"><span>Loop side walk</span><input id="side-walk-loop" type="checkbox" checked></label>
+          </div>
+        </div>
+        <div class="mode-settings" data-base-settings="jump" hidden>
+          <div class="setting-range"><div class="control-label"><label for="jump-height">Jump Height</label><output id="jump-height-value">100 px</output></div><input id="jump-height" type="range" min="30" max="180" value="100" step="5"></div>
+          <div class="setting-range"><div class="control-label"><label for="jump-speed">Jump Speed</label><output id="jump-speed-value">1.0×</output></div><input id="jump-speed" type="range" min="0.5" max="2" value="1" step="0.1"></div>
+          <div class="setting-range"><div class="control-label"><label for="squash-stretch">Squash &amp; Stretch</label><output id="squash-stretch-value">12%</output></div><input id="squash-stretch" type="range" min="0" max="25" value="12" step="1"></div>
+          <label class="loop-control"><span>Loop jump</span><input id="jump-loop" type="checkbox" checked></label>
+        </div>
+        <div class="mode-settings" data-base-settings="float" hidden>
+          <div class="setting-range"><div class="control-label"><label for="float-speed">Float Speed</label><output id="float-speed-value">1.0×</output></div><input id="float-speed" type="range" min="0.3" max="2" value="1" step="0.1"></div>
+          <div class="setting-range"><div class="control-label"><label for="float-amount">Float Amount</label><output id="float-amount-value">12 px</output></div><input id="float-amount" type="range" min="2" max="36" value="12" step="1"></div>
+          <label class="loop-control"><span>Horizontal drift</span><input id="float-drift" type="checkbox" checked></label>
+        </div>
+        <div class="mode-settings" data-effect-settings="talk" hidden>
+          <div class="mouth-actions"><button class="tool-button" id="set-mouth" type="button">Set Mouth Area</button><button class="tool-button" id="reset-mouth" type="button" disabled>Reset Area</button></div>
+          <button class="primary-button talk-preview" id="preview-talk" type="button" disabled>Preview Talk</button>
+          <fieldset class="talk-style-picker">
+            <legend>Mouth Movement Style</legend>
+            <div class="talk-style-options">
+              <label><input type="radio" name="talk-style" value="vertical" checked><span>Vertical</span></label>
+              <label><input type="radio" name="talk-style" value="horizontal"><span>Horizontal</span></label>
+              <label><input type="radio" name="talk-style" value="open-wide"><span>Open / Wide</span></label>
+              <label><input type="radio" name="talk-style" value="side-to-side"><span>Side to Side</span></label>
+              <label><input type="radio" name="talk-style" value="squash"><span>Squash Talk</span></label>
+              <label><input type="radio" name="talk-style" value="o-shape"><span>O-Shape</span></label>
+            </div>
+          </fieldset>
+          <div class="setting-range"><div class="control-label"><label for="mouth-movement">Mouth Movement</label><output id="mouth-movement-value">100%</output></div><input id="mouth-movement" type="range" min="20" max="200" value="100" step="1"></div>
+          <div class="setting-range"><div class="control-label"><label for="talk-speed">Talk Speed</label><output id="talk-speed-value">2.0×</output></div><input id="talk-speed" type="range" min="0.5" max="2.5" value="2" step="0.1"></div>
+          <div class="setting-range"><div class="control-label"><label for="talk-smoothness">Smoothness</label><output id="talk-smoothness-value">70%</output></div><input id="talk-smoothness" type="range" min="0" max="100" value="70" step="1"></div>
+          <div class="setting-range"><div class="control-label"><label for="horizontal-movement">Horizontal Movement</label><output id="horizontal-movement-value">50%</output></div><input id="horizontal-movement" type="range" min="0" max="100" value="50" step="1"></div>
+          <div class="setting-range"><div class="control-label"><label for="vertical-movement">Vertical Movement</label><output id="vertical-movement-value">100%</output></div><input id="vertical-movement" type="range" min="0" max="150" value="100" step="1"></div>
+          <label class="loop-control"><span>Loop talk</span><input id="talk-loop" type="checkbox" checked></label>
+          <p class="selection-help" id="selection-help">Set the mouth area directly on the preview.</p>
+        </div>
+        <div class="mode-settings" data-effect-settings="blink" hidden>
+          <div class="mouth-actions"><button class="tool-button" id="set-eyes" type="button">Set Eye Area</button><button class="tool-button" id="reset-eyes" type="button" disabled>Reset Area</button></div>
+          <div class="setting-range"><div class="control-label"><label for="blink-amount">Blink Amount</label><output id="blink-amount-value">85%</output></div><input id="blink-amount" type="range" min="20" max="100" value="85" step="1"></div>
+          <div class="setting-range"><div class="control-label"><label for="blink-speed">Blink Speed</label><output id="blink-speed-value">1.0×</output></div><input id="blink-speed" type="range" min="0.5" max="2.5" value="1" step="0.1"></div>
+          <label class="loop-control"><span>Random blink interval</span><input id="random-blink" type="checkbox" checked></label>
+          <p class="selection-help" id="eye-selection-help">Set an area containing the character's eyes.</p>
+        </div>
+        <div class="mode-settings" data-effect-settings="breathe" hidden>
+          <div class="setting-range"><div class="control-label"><label for="breathe-intensity">Breathe Intensity</label><output id="breathe-intensity-value">6%</output></div><input id="breathe-intensity" type="range" min="1" max="15" value="6" step="1"></div>
+          <div class="setting-range"><div class="control-label"><label for="breathe-speed">Breathe Speed</label><output id="breathe-speed-value">1.0×</output></div><input id="breathe-speed" type="range" min="0.4" max="2" value="1" step="0.1"></div>
+        </div>
+        <div class="mode-settings" data-effect-settings="shake" hidden>
+          <div class="setting-range"><div class="control-label"><label for="shake-intensity">Shake Intensity</label><output id="shake-intensity-value">4 px</output></div><input id="shake-intensity" type="range" min="1" max="16" value="4" step="1"></div>
+          <div class="setting-range"><div class="control-label"><label for="shake-speed">Shake Speed</label><output id="shake-speed-value">1.0×</output></div><input id="shake-speed" type="range" min="0.5" max="3" value="1" step="0.1"></div>
+        </div>
+        <div class="mode-settings" data-effect-settings="pulse" hidden>
+          <div class="setting-range"><div class="control-label"><label for="pulse-intensity">Pulse Intensity</label><output id="pulse-intensity-value">8%</output></div><input id="pulse-intensity" type="range" min="1" max="25" value="8" step="1"></div>
+          <div class="setting-range"><div class="control-label"><label for="pulse-speed">Pulse Speed</label><output id="pulse-speed-value">1.0×</output></div><input id="pulse-speed" type="range" min="0.4" max="2.5" value="1" step="0.1"></div>
+        </div>
+        <div class="mode-settings" data-effect-settings="wiggle" hidden>
+          <div class="setting-range"><div class="control-label"><label for="wiggle-angle">Wiggle Angle</label><output id="wiggle-angle-value">3°</output></div><input id="wiggle-angle" type="range" min="1" max="12" value="3" step="0.5"></div>
+          <div class="setting-range"><div class="control-label"><label for="wiggle-speed">Wiggle Speed</label><output id="wiggle-speed-value">1.0×</output></div><input id="wiggle-speed" type="range" min="0.4" max="3" value="1" step="0.1"></div>
+        </div>
+
+        <button class="reset-button" id="reset-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6M5.1 15A8 8 0 0 0 18.6 18M18.9 9A8 8 0 0 0 5.4 6"/></svg>
+          Reset workspace
+        </button>
+      </section>
+
+      <section class="panel decorative-panel" aria-labelledby="decorative-title">
+        <div class="step-heading">
+          <span class="step-number">5</span>
+          <div><p class="eyebrow">Visual overlays</p><h2 id="decorative-title">Decorative Effects</h2></div>
+        </div>
+        <p class="decorative-intro">Combine any number of overlays with Character Effects. Changes preview immediately.</p>
+        <div class="decorative-list" id="decorative-list"></div>
+      </section>
+
+      <section class="panel export-panel" aria-labelledby="export-title">
+        <div class="step-heading">
+          <span class="step-number">6</span>
+          <div><p class="eyebrow">Save your creation</p><h2 id="export-title">Export Animation</h2></div>
+        </div>
+        <div class="export-grid">
+          <label class="export-field"><span>Format</span><select id="export-format"><option value="gif" selected>GIF</option><option value="webm">WebM</option></select></label>
+          <label class="export-field"><span>Size</span><select id="export-size"><option value="original">Original</option><option value="1024">1024 px</option><option value="800">800 px</option><option value="600">600 px</option><option value="400">400 px</option><option value="300">300 px</option></select></label>
+          <label class="export-field"><span>FPS</span><select id="export-fps"><option>12</option><option selected>15</option><option>20</option><option>24</option><option>30</option></select></label>
+          <label class="export-field"><span>Duration</span><select id="export-duration"><option value="1">1 second</option><option value="2" selected>2 seconds</option><option value="3">3 seconds</option><option value="5">5 seconds</option><option value="custom">Custom</option></select></label>
+          <label class="export-field custom-duration" id="custom-duration-field" hidden><span>Custom seconds</span><input id="custom-duration" type="number" min="0.5" max="10" step="0.5" value="2"></label>
+          <label class="export-field"><span>Background</span><select id="export-background"><option value="transparent" selected>Transparent</option><option value="solid">Solid color</option></select></label>
+          <label class="export-field color-field" id="export-color-field" hidden><span>Solid color</span><input id="export-color" type="color" value="#ffffff"></label>
+          <label class="loop-control export-loop"><span>Loop</span><input id="export-loop" type="checkbox" checked></label>
+        </div>
+        <button class="primary-button create-animation" id="create-animation" type="button" disabled>Create Animation</button>
+        <p class="export-status" id="export-status" aria-live="polite">Upload a character to export its animation.</p>
+        <a class="primary-button download-animation" id="download-animation" href="#" hidden>Download GIF</a>
+      </section>
+    </main>
+
+    <footer>Made for curious creators <span aria-hidden="true">✦</span> Everything happens in your browser</footer>
+    <script src="gif-encoder.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
