@@ -20,7 +20,7 @@ const talkDefaults = { style: "vertical", mouthMovement: "100", speed: "2", smoo
 let imageUrl, original, history = [], historyBytes = 0, erasing = false, drawing = false, autoApplied = false;
 let baseMotion = "walk", animationStart = performance.now(), playing = true, mouthArea = null, eyeArea = null, selectingMouth = false, selectingEyes = false, selectionStart = null;
 let talkOpened = false;
-let exporting = false, exportUrl = null;
+let exporting = false, exportUrl = null, exportBlob = null, exportHeader = "", exportFrameCount = 0;
 
 const decorativeDefinitions = {
   glow: { name: "Glow", layer: "behind", color: ["Color", "#71f6b5"], intensity: ["Intensity", 55, 0, 100, "%"], radius: ["Blur / radius", 22, 2, 60, " px"], pulse: ["Pulse", true] },
@@ -478,16 +478,27 @@ async function createGif(canvas, context, source, talkCanvas, talkContext, confi
   return encoder.finish();
 }
 async function inspectGifBlob(blob, frameCountRequested) {
-  const headerBytes = new Uint8Array(await blob.slice(0, 6).arrayBuffer());
-  const header = new TextDecoder("ascii").decode(headerBytes);
-  console.log("GIF blob type:", blob.type);
-  console.log("GIF blob size:", blob.size);
-  console.log("GIF header:", header);
-  console.log("GIF frame count requested:", frameCountRequested);
+  const header = await blob.slice(0, 6).text();
   if (blob.type !== "image/gif" || (header !== "GIF87a" && header !== "GIF89a")) {
+    console.error("GIF encoding failed. Invalid header:", header);
     throw new Error("GIF encoding failed");
   }
   return header;
+}
+function downloadGif(event) {
+  if (!downloadAnimation.download.toLowerCase().endsWith(".gif")) return;
+  if (!exportBlob || exportBlob.type !== "image/gif" || (exportHeader !== "GIF87a" && exportHeader !== "GIF89a")) {
+    event.preventDefault();
+    console.error("GIF encoding failed. Invalid header:", exportHeader);
+    exportStatus.textContent = "GIF encoding failed";
+    downloadAnimation.hidden = true;
+    downloadAnimation.removeAttribute("href");
+    return;
+  }
+  console.log("FINAL GIF blob type:", exportBlob.type);
+  console.log("FINAL GIF blob size:", exportBlob.size);
+  console.log("FINAL GIF header:", exportHeader);
+  console.log("FINAL GIF frames:", exportFrameCount);
 }
 function formatFileSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -530,12 +541,15 @@ async function exportAnimation() {
   const talkCanvas = document.createElement("canvas"); talkCanvas.width = source.width; talkCanvas.height = source.height; const talkContext = talkCanvas.getContext("2d");
   exporting = true; createAnimationButton.disabled = true; downloadAnimation.hidden = true; downloadAnimation.removeAttribute("href");
   if (exportUrl) { URL.revokeObjectURL(exportUrl); exportUrl = null; }
+  exportBlob = null; exportHeader = ""; exportFrameCount = 0;
   exportStatus.textContent = layout.capped ? `Original capped at ${format === "gif" ? "1024" : "1920"} px for memory safety. Rendering 0%` : "Rendering 0%";
   try {
     const blob = format === "gif"
       ? await createGif(canvas, context, source, talkCanvas, talkContext, config, layout, fps, duration, looping, background)
       : await createWebM(canvas, context, source, talkCanvas, talkContext, config, layout, fps, duration, looping, background);
-    if (format === "gif") await inspectGifBlob(blob, Math.max(1, Math.ceil(duration * fps)));
+    const frameCount = Math.max(1, Math.ceil(duration * fps));
+    const header = format === "gif" ? await inspectGifBlob(blob, frameCount) : "";
+    if (format === "gif") { exportBlob = blob; exportHeader = header; exportFrameCount = frameCount; }
     exportUrl = URL.createObjectURL(blob); downloadAnimation.href = exportUrl;
     downloadAnimation.download = `inky-paws-${config.baseMotion}.${format}`; downloadAnimation.textContent = `Download ${format.toUpperCase()}`; downloadAnimation.hidden = false;
     const alphaNote = format === "webm" && background === "transparent" ? " VP9 transparency depends on browser and video-player support." : "";
@@ -548,7 +562,7 @@ async function exportAnimation() {
 }
 function clearExportDownload() {
   if (exportUrl) URL.revokeObjectURL(exportUrl);
-  exportUrl = null; downloadAnimation.hidden = true; downloadAnimation.removeAttribute("href");
+  exportUrl = null; exportBlob = null; exportHeader = ""; exportFrameCount = 0; downloadAnimation.hidden = true; downloadAnimation.removeAttribute("href");
 }
 
 function resetWorkspace() {
@@ -611,6 +625,7 @@ document.querySelectorAll('input[name="talk-style"]').forEach((input) => input.a
 $("#export-duration").addEventListener("change", () => { $("#custom-duration-field").hidden = $("#export-duration").value !== "custom"; });
 $("#export-background").addEventListener("change", () => { $("#export-color-field").hidden = $("#export-background").value !== "solid"; });
 createAnimationButton.addEventListener("click", exportAnimation);
+downloadAnimation.addEventListener("click", downloadGif);
 setMouthButton.addEventListener("click", () => {
   if (!original) { selectionHelp.textContent = "Upload a character before selecting its mouth."; return; }
   playing = false; resetPreviewPose(); selectingMouth = true; selectingEyes = false; selectionStart = null; mouthSelection.hidden = true; eyeSelection.hidden = true; setEyesButton.classList.remove("active");
